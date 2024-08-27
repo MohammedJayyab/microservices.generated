@@ -23,10 +23,10 @@ This repository demonstrates a simple microservices architecture using .NET, Rab
 - [Docker](https://www.docker.com/get-started)
 
 ## Getting Started
-
+```bash
  1. Clone the Repository
 
-```bash
+
 git clone https://github.com/yourusername/microservices-architecture.git
 cd microservices-architecture
 
