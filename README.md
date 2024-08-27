@@ -40,6 +40,9 @@ To set up RabbitMQ, run it in a Docker container with the following command:
 
 ```bash
 docker run -d --hostname my-rabbit --name some-rabbit -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+- user: guest
+- pass: guest
+- Url: http://localhost:15672
 
 ```
 ## 3. Running the Services
