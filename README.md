@@ -30,10 +30,10 @@ This repository demonstrates a simple microservices architecture using .NET, Rab
 git clone https://github.com/yourusername/microservices-architecture.git
 cd microservices-architecture
 
-# 2. Install and Run RabbitMQ with Docker
+ 2. Install and Run RabbitMQ with Docker
 docker run -d --hostname my-rabbit --name some-rabbit -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 
-# 3. Running the Services
+ 3. Running the Services
 cd OrderService
 dotnet run
 
@@ -44,7 +44,7 @@ dotnet run
 cd NotificationService
 dotnet run
 
-# 4. Testing:
+ 4. Testing:
 curl -X POST http://localhost:5000/api/orders \
 -H "Content-Type: application/json" \
 -d '{
