@@ -1,55 +1,44 @@
 # Microservices Architecture with .NET and RabbitMQ
 
-This repository demonstrates a simple microservices architecture using .NET, RabbitMQ, and Docker. The system consists of three main services: `OrderService`, `PaymentService`, and `NotificationService`. These services communicate with each other using RabbitMQ as the message broker.
+Welcome to this guide on setting up a simple microservices architecture using .NET, RabbitMQ, and Docker. In this tutorial, you'll learn how to set up and run a system composed of three main services: `OrderService`, `PaymentService`, and `NotificationService`. These services will communicate with each other using RabbitMQ as the message broker.
 
-## Services Overview
+# Scene 1: Introduction
 
-1. **OrderService**
-   - Handles order creation.
-   - Listens for `OrderCreated` events and processes the order.
-   - Publishes `OrderProcessedCompleted` events.
+Our architecture is made up of three services:
 
-2. **PaymentService**
-   - Listens for `OrderProcessedCompleted` events.
-   - Processes payments and publishes `OrderPaymentProcessedCompleted` events.
+- **OrderService:** Handles order creation.
+  - Listens for `OrderCreated` events.
+  - Processes the order and publishes `OrderProcessedCompleted` events.
 
-3. **NotificationService**
-   - Listens for `OrderPaymentProcessedCompleted` events.
-   - Sends a notification (logs a message) indicating that the order has been successfully processed and paid.
+- **PaymentService:** Manages payment processing.
+  - Listens for `OrderProcessedCompleted` events.
+  - Processes payments and publishes `OrderPaymentProcessedCompleted` events.
 
-## Prerequisites
+- **NotificationService:** Sends notifications once orders are processed and paid.
+  - Listens for `OrderPaymentProcessedCompleted` events.
+  - Logs a message confirming successful order processing and payment.
+
+# Scene 2: Prerequisites
+
+Before we get started, make sure you have the following installed:
 
 - [.NET SDK 6.x](https://dotnet.microsoft.com/download/dotnet/6.0)
 - [Docker](https://www.docker.com/get-started)
 
-## Getting Started
+# Scene 3: Getting Started
+
+Follow these steps to set up and run the services:
+
+## 1. Clone the Repository
+
 ```bash
- 1. Clone the Repository
-
-
 git clone https://github.com/yourusername/microservices-architecture.git
 cd microservices-architecture
+```
+## 2. Install and Run RabbitMQ with Docker
+To set up RabbitMQ, run it in a Docker container with the following command:
 
- 2. Install and Run RabbitMQ with Docker
+```bash
 docker run -d --hostname my-rabbit --name some-rabbit -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 
- 3. Running the Services
-cd OrderService
-dotnet run
-
-
-cd PaymentService
-dotnet run
-
-cd NotificationService
-dotnet run
-
- 4. Testing:
-curl -X POST http://localhost:5000/api/orders \
--H "Content-Type: application/json" \
--d '{
-  "OrderId": "1234",
-  "ProductName": "Laptop",
-  "Quantity": 1,
-  "Price": 1500
-}'
+```
