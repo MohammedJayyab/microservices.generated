@@ -42,3 +42,30 @@ To set up RabbitMQ, run it in a Docker container with the following command:
 docker run -d --hostname my-rabbit --name some-rabbit -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 
 ```
+## 3. Running the Services
+
+```bash
+cd OrderService
+dotnet run
+
+cd PaymentService
+dotnet run
+
+cd NotificationService
+dotnet run
+```
+
+## 4. Testing using  Postman
+```bash
+   curl -X POST http://localhost:5000/api/orders \
+-H "Content-Type: application/json" \
+-d '{
+  "OrderId": "1234",
+  "ProductName": "Laptop",
+  "Quantity": 1,
+  "Price": 1500
+}'
+
+```
+
+
