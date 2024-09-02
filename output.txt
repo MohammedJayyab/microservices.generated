@@ -1,0 +1,478 @@
+﻿// Program.cs
+using NotificationService;
+
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddHostedService<Worker>();
+
+Console.WriteLine("* *** *** *** Notification service started");
+
+var host = builder.Build();
+host.Run();
+// Worker.cs
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using System.Text;
+
+namespace NotificationService
+{
+    public class Worker : BackgroundService
+    {
+        private readonly ILogger<Worker> _logger;
+
+        public Worker(ILogger<Worker> logger)
+        {
+            _logger = logger;
+        }
+
+        protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("NotificationService Worker started and waiting for OrderPaymentProcessedCompleted events...");
+
+            var factory = new ConnectionFactory() { HostName = "localhost" };
+
+            // Create a persistent connection
+            IConnection _connection = factory.CreateConnection();
+            IModel _channel = _connection.CreateModel();
+
+            // Declare the queue that this worker will consume
+            _channel.QueueDeclare(queue: "orderPaymentProcessedCompletedQueue", durable: false, exclusive: false, autoDelete: false, arguments: null);
+            var consumer = new EventingBasicConsumer(_channel);
+            consumer.Received += (model, ea) =>
+            {
+                var body = ea.Body.ToArray();
+                var message = Encoding.UTF8.GetString(body);
+                _logger.LogInformation($"OrderPaymentProcessedCompleted event received: {message}");
+
+                // Simulate sending a notification
+                _logger.LogInformation($"Notification sent: Order with details: {message} has been successfully processed and paid.");
+            };
+
+            // Start consuming messages from the orderPaymentProcessedCompletedQueue
+            _channel.BasicConsume(queue: "orderPaymentProcessedCompletedQueue", autoAck: true, consumer: consumer);
+
+            return Task.CompletedTask;
+        }
+    }
+}
+// Order.cs
+public class Order
+{
+    public string OrderId { get; set; }
+    public string ProductName { get; set; }
+    public int Quantity { get; set; }
+    public decimal Price { get; set; }
+}
+// Program.cs
+using OrderService;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddControllers();  // This line is needed to register controller services
+
+builder.Services.AddHostedService<Worker>();
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseRouting();
+
+/*app.UseAuthentication();
+app.UseAuthorization();
+*/
+
+app.MapControllers();
+
+app.Run();
+// Worker.cs
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using System.Text;
+
+namespace OrderService
+{
+    public class Worker : BackgroundService
+    {
+        private readonly ILogger<Worker> _logger;
+        private IConnection _connection;
+        private IModel _channel;
+
+        public Worker(ILogger<Worker> logger)
+        {
+            _logger = logger;
+            InitializeRabbitMQ();
+        }
+
+        private void InitializeRabbitMQ()
+        {
+            var factory = new ConnectionFactory() { HostName = "localhost" };
+
+            // Create a persistent connection
+            _connection = factory.CreateConnection();
+            _channel = _connection.CreateModel();
+
+            // Declare the queue that this worker will consume
+            _channel.QueueDeclare(queue: "orderCreatedQueue", durable: false, exclusive: false, autoDelete: false, arguments: null);
+        }
+
+        protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("OrderService Worker started and waiting for OrderCreated events...");
+
+            var consumer = new EventingBasicConsumer(_channel);
+            consumer.Received += (model, ea) =>
+            {
+                var body = ea.Body.ToArray();
+                var message = Encoding.UTF8.GetString(body);
+                _logger.LogInformation($"OrderCreated event received: {message}");
+
+                // Simulate order processing
+                var orderProcessed = ProcessOrder(message);
+
+                if (orderProcessed)
+                {
+                    PublishOrderProcessedCompletedEvent(message);
+                }
+            };
+
+            // Start consuming messages from the orderCreatedQueue
+            _channel.BasicConsume(queue: "orderCreatedQueue", autoAck: true, consumer: consumer);
+
+            return Task.CompletedTask;
+        }
+
+        private bool ProcessOrder(string orderMessage)
+        {
+            _logger.LogInformation("Processing order...");
+            Thread.Sleep(2000);  // Simulate time taken to process order
+            _logger.LogInformation("Order processed successfully.");
+            return true;  // Simulate successful order processing
+        }
+
+        private void PublishOrderProcessedCompletedEvent(string orderMessage)
+        {
+            var processedMessage = $"OrderProcessedCompleted: {orderMessage}";
+            var body = Encoding.UTF8.GetBytes(processedMessage);
+
+            // Declare the queue for the processed event
+            _channel.QueueDeclare(queue: "orderProcessedCompletedQueue", durable: false, exclusive: false, autoDelete: false, arguments: null);
+            _channel.BasicPublish(exchange: "", routingKey: "orderProcessedCompletedQueue", basicProperties: null, body: body);
+
+            _logger.LogInformation($"OrderProcessedCompleted event published: {processedMessage}");
+        }
+
+        public override void Dispose()
+        {
+            _channel.Close();
+            _connection.Close();
+            base.Dispose();
+        }
+    }
+}
+// PaymentRequest.cs
+namespace PaymentService;
+
+public class PaymentRequest
+{
+    public string OrderId { get; set; }
+    public decimal Amount { get; set; }
+    public string PaymentMethod { get; set; }
+}
+// Program.cs
+using Microsoft.Extensions.Hosting;
+using PaymentService;
+
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddHostedService<Worker>();
+
+Console.WriteLine("* *** *** *** Payment Service Started");
+
+var host = builder.Build();
+host.Run();
+// Worker.cs
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using System.Text;
+
+namespace PaymentService;
+
+public class Worker : BackgroundService
+{
+    private readonly ILogger<Worker> _logger;
+    private IConnection _connection;
+    private IModel _channel;
+
+    public Worker(ILogger<Worker> logger)
+    {
+        _logger = logger;
+        InitializeRabbitMQ();
+    }
+
+    private void InitializeRabbitMQ()
+    {
+        var factory = new ConnectionFactory() { HostName = "localhost" };
+
+        // Create a persistent connection
+        _connection = factory.CreateConnection();
+        _channel = _connection.CreateModel();
+
+        // Declare the queue that this worker will consume
+        _channel.QueueDeclare(queue: "orderProcessedCompletedQueue", durable: false, exclusive: false, autoDelete: false, arguments: null);
+    }
+
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("PaymentService Worker started and waiting for OrderProcessedCompleted events...");
+
+        var consumer = new EventingBasicConsumer(_channel);
+        consumer.Received += (model, ea) =>
+        {
+            var body = ea.Body.ToArray();
+            var message = Encoding.UTF8.GetString(body);
+            _logger.LogInformation($"OrderProcessedCompleted event received: {message}");
+
+            // Simulate payment processing
+            var paymentProcessed = ProcessPayment(message);
+
+            if (paymentProcessed)
+            {
+                PublishOrderPaymentProcessedCompletedEvent(message);
+            }
+        };
+
+        // Start consuming messages from the orderProcessedCompletedQueue
+        _channel.BasicConsume(queue: "orderProcessedCompletedQueue", autoAck: true, consumer: consumer);
+
+        return Task.CompletedTask;
+    }
+
+    private bool ProcessPayment(string orderMessage)
+    {
+        _logger.LogInformation("Processing payment...");
+        Thread.Sleep(2000);  // Simulate time taken to process payment
+        _logger.LogInformation("Payment processed successfully.");
+        return true;  // Simulate a successful payment processing
+    }
+
+    private void PublishOrderPaymentProcessedCompletedEvent(string orderMessage)
+    {
+        var paymentMessage = $"OrderPaymentProcessedCompleted for order: {orderMessage}";
+        var body = Encoding.UTF8.GetBytes(paymentMessage);
+
+        // Declare the queue for the processed event
+        _channel.QueueDeclare(queue: "orderPaymentProcessedCompletedQueue", durable: false, exclusive: false, autoDelete: false, arguments: null);
+        _channel.BasicPublish(exchange: "", routingKey: "orderPaymentProcessedCompletedQueue", basicProperties: null, body: body);
+
+        _logger.LogInformation("OrderPaymentProcessedCompleted event published.");
+    }
+
+    public override void Dispose()
+    {
+        _channel.Close();
+        _connection.Close();
+        base.Dispose();
+    }
+}
+// OrdersController.cs
+using Microsoft.AspNetCore.Mvc;
+using RabbitMQ.Client;
+using System.Text;
+using System.Text.Json;
+
+namespace OrderService.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class OrdersController : ControllerBase
+
+{
+    private ILogger<OrdersController> _logger;
+
+    public OrdersController(ILogger<OrdersController> logger)
+    {
+        _logger = logger;
+    }
+
+    [HttpPost]
+    public IActionResult PlaceOrder([FromBody] Order order)
+    {
+        // Simulate saving the order to a database
+        SaveOrder(order);
+
+        // Publish an OrderCreated event
+        PublishOrderCreatedEvent(order);
+
+        return Ok("Order placed successfully.");
+    }
+
+    private void SaveOrder(Order order)
+    {
+        if (order == null)
+        {
+            throw new ArgumentNullException(nameof(order));
+        }
+        else
+        {
+            Console.WriteLine($"Order saved to Dbase: {order}");
+        }
+    }
+
+    private void PublishOrderCreatedEvent(Order order)
+    {
+        var factory = new ConnectionFactory() { HostName = "localhost" };
+        using var connection = factory.CreateConnection();
+        using var channel = connection.CreateModel();
+
+        channel.QueueDeclare(queue: "orderCreatedQueue", durable: false, exclusive: false, autoDelete: false, arguments: null);
+
+        var json = JsonSerializer.Serialize(order);
+        var body = Encoding.UTF8.GetBytes(json);
+
+        channel.BasicPublish(exchange: "", routingKey: "orderCreatedQueue", basicProperties: null, body: body);
+
+        Console.WriteLine($"orderCreatedQueue event published: {json}");
+
+        _logger.LogInformation($"==> orderCreatedQueue event published: {json}");
+    }
+}
+// PaymentController .cs
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+
+namespace PaymentService.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class PaymentController : ControllerBase
+{
+    private readonly ILogger<PaymentController> _logger;
+
+    public PaymentController(ILogger<PaymentController> logger)
+    {
+        _logger = logger;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> ProcessPayment([FromBody] PaymentRequest paymentRequest)
+    {
+        // Simulate payment processing
+        bool paymentSuccess = await SimulatePaymentProcessing(paymentRequest);
+
+        if (paymentSuccess)
+        {
+            _logger.LogInformation($"Payment for OrderId {paymentRequest.OrderId} processed successfully.");
+            return Ok("Payment processed successfully.");
+        }
+        else
+        {
+            _logger.LogError($"Payment for OrderId {paymentRequest.OrderId} failed.");
+            return BadRequest("Payment failed.");
+        }
+    }
+
+    private async Task<bool> SimulatePaymentProcessing(PaymentRequest paymentRequest)
+    {
+        // Logic to process payment
+        // In a real-world scenario, this would involve calling a payment gateway
+        Task.Delay(2000).Wait(); // Simulate payment processing delay
+        await Task.CompletedTask;
+        return true; // Assume payment is always successful
+    }
+}
+// appsettings.Development.json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.Hosting.Lifetime": "Information"
+    }
+  }
+}
+
+// appsettings.json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.Hosting.Lifetime": "Information"
+    }
+  }
+}
+
+// appsettings.Development.json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}
+
+// appsettings.json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+
+// launchSettings.json
+{
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "NotificationService": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
+
+// launchSettings.json
+{
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:65319",
+      "sslPort": 44371
+    }
+  },
+  "profiles": {
+    "OrderService": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "https://localhost:5000 ;http://localhost:5090",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

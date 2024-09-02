@@ -1,6 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace PaymentService.Controllers;
 
@@ -23,8 +21,8 @@ public class PaymentController : ControllerBase
 
         if (paymentSuccess)
         {
-            _logger.LogInformation($"Payment for OrderId {paymentRequest.OrderId} processed successfully.");
-            return Ok("Payment processed successfully.");
+            _logger.LogInformation($" ** ***  ***  ********** Payment for OrderId {paymentRequest.OrderId} processed successfully.");
+            return Ok(paymentRequest);
         }
         else
         {

@@ -20,13 +20,14 @@ public class OrdersController : ControllerBase
     [HttpPost]
     public IActionResult PlaceOrder([FromBody] Order order)
     {
+        _logger.LogInformation($" ****** Order received: {order}");
         // Simulate saving the order to a database
         SaveOrder(order);
 
         // Publish an OrderCreated event
         PublishOrderCreatedEvent(order);
 
-        return Ok("Order placed successfully.");
+        return Ok(order);
     }
 
     private void SaveOrder(Order order)

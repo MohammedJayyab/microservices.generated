@@ -10,6 +10,18 @@ builder.Services.AddHostedService<Worker>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Add CORS services.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalhost3000",
+        builder =>
+        {
+            builder.WithOrigins("http://localhost:3000")
+                   .AllowAnyHeader()
+                   .AllowAnyMethod();
+        });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -20,6 +32,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
+
+// Use the CORS policy.
+app.UseCors("AllowLocalhost3000");
 
 /*app.UseAuthentication();
 app.UseAuthorization();
