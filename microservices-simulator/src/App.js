@@ -1,23 +1,27 @@
-import logo from './logo.svg';
-import './App.css';
+// src/App.js
+import React, { useState } from "react";
+import OrderComponent from "./OrderComponent/OrderComponent";
+import PaymentComponent from "./PaymentComponent/PaymentComponent";
+import NotificationComponent from "./NotificationComponent/NotificationComponent";
 
 function App() {
+  const [orderId, setOrderId] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+
+  const handleOrderPlaced = (order) => {
+    setOrderId(order.orderId);
+    setNotifications((prev) => [
+      ...prev,
+      `Order ${order.orderId} placed successfully!`,
+    ]);
+  };
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <h1>Microservices Simulator</h1>
+      <OrderComponent onOrderPlaced={handleOrderPlaced} />
+      {orderId && <PaymentComponent orderId={orderId} />}
+      <NotificationComponent notifications={notifications} />
     </div>
   );
 }
