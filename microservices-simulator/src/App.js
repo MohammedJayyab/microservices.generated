@@ -1,4 +1,3 @@
-// src/App.js
 import React, { useState } from "react";
 import OrderComponent from "./OrderComponent/OrderComponent";
 import PaymentComponent from "./PaymentComponent/PaymentComponent";
@@ -9,6 +8,13 @@ function App() {
   const [notifications, setNotifications] = useState([]);
 
   const handleOrderPlaced = (order) => {
+    if (!order || !order.orderId) {
+      console.error("Order placement failed or returned an invalid response.");
+      return;
+    }
+
+    console.log("Order received from backend:", order);
+
     setOrderId(order.orderId);
     setNotifications((prev) => [
       ...prev,

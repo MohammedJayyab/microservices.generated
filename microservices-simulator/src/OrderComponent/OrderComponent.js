@@ -1,4 +1,3 @@
-// src/OrderComponent.js
 import React, { useState } from "react";
 import axios from "axios";
 
@@ -33,25 +32,29 @@ const OrderComponent = ({ onOrderPlaced }) => {
       <input
         type="text"
         name="orderId"
-        placeholder="order Id"
+        placeholder="Order ID"
+        value={orderDetails.orderId}
         onChange={handleChange}
       />
       <input
         type="text"
         name="productName"
         placeholder="Product Name"
+        value={orderDetails.productName}
         onChange={handleChange}
       />
       <input
         type="number"
         name="quantity"
         placeholder="Quantity"
+        value={orderDetails.quantity}
         onChange={handleChange}
       />
       <input
         type="number"
         name="price"
-        placeholder="price per unit"
+        placeholder="Price per unit"
+        value={orderDetails.price}
         onChange={handleChange}
       />
       <button onClick={placeOrder}>Place Order</button>
