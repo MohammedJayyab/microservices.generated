@@ -1,4 +1,5 @@
-﻿using RabbitMQ.Client;
+﻿using Microsoft.Extensions.Configuration;
+using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
 
@@ -7,25 +8,42 @@ namespace OrderService
     public class Worker : BackgroundService
     {
         private readonly ILogger<Worker> _logger;
+        private readonly IConfiguration _configuration;
         private IConnection _connection;
         private IModel _channel;
 
-        public Worker(ILogger<Worker> logger)
+        public Worker(ILogger<Worker> logger, IConfiguration configuration)
         {
             _logger = logger;
+            _configuration = configuration;
             InitializeRabbitMQ();
         }
 
         private void InitializeRabbitMQ()
         {
-            var factory = new ConnectionFactory() { HostName = "localhost" };
+            _logger.LogInformation("Initializing RabbitMQ...");
+            _logger.LogInformation($"RabbitMQ Host: {_configuration["RabbitMQ:Host"]}");
+            _logger.LogInformation($"RabbitMQ Port: {_configuration["RabbitMQ:Port"]}");
+            _logger.LogInformation($" ------- ");
+            try
+            {
+                // Get RabbitMQ settings from configuration
+                var rabbitMQHost = _configuration["RabbitMQ:Host"];
+                var rabbitMQPort = int.Parse(_configuration["RabbitMQ:Port"]);
 
-            // Create a persistent connection
-            _connection = factory.CreateConnection();
-            _channel = _connection.CreateModel();
+                var factory = new ConnectionFactory() { HostName = rabbitMQHost, Port = rabbitMQPort };
 
-            // Declare the queue that this worker will consume
-            _channel.QueueDeclare(queue: "orderCreatedQueue", durable: false, exclusive: false, autoDelete: false, arguments: null);
+                // Create a persistent connection
+                _connection = factory.CreateConnection();
+                _channel = _connection.CreateModel();
+
+                // Declare the queue that this worker will consume
+                _channel.QueueDeclare(queue: "orderCreatedQueue", durable: false, exclusive: false, autoDelete: false, arguments: null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error initializing RabbitMQ: {ex.Message}");
+            }
         }
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)

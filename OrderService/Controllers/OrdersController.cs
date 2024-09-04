@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using RabbitMQ.Client;
 using System.Text;
 using System.Text.Json;
@@ -8,13 +9,14 @@ namespace OrderService.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 public class OrdersController : ControllerBase
-
 {
-    private ILogger<OrdersController> _logger;
+    private readonly ILogger<OrdersController> _logger;
+    private readonly IConfiguration _configuration;
 
-    public OrdersController(ILogger<OrdersController> logger)
+    public OrdersController(ILogger<OrdersController> logger, IConfiguration configuration)
     {
         _logger = logger;
+        _configuration = configuration;
     }
 
     [HttpPost]
@@ -44,7 +46,11 @@ public class OrdersController : ControllerBase
 
     private void PublishOrderCreatedEvent(Order order)
     {
-        var factory = new ConnectionFactory() { HostName = "localhost" };
+        // Get RabbitMQ settings from configuration
+        var rabbitMQHost = _configuration["RabbitMQ:Host"];
+        var rabbitMQPort = int.Parse(_configuration["RabbitMQ:Port"]);
+
+        var factory = new ConnectionFactory() { HostName = rabbitMQHost, Port = rabbitMQPort };
         using var connection = factory.CreateConnection();
         using var channel = connection.CreateModel();
 

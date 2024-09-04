@@ -7,25 +7,43 @@ namespace PaymentService;
 public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
+    private readonly IConfiguration _configuration;
     private IConnection _connection;
     private IModel _channel;
 
-    public Worker(ILogger<Worker> logger)
+    public Worker(ILogger<Worker> logger, IConfiguration configuration)
     {
         _logger = logger;
+        _configuration = configuration;
         InitializeRabbitMQ();
     }
 
     private void InitializeRabbitMQ()
     {
-        var factory = new ConnectionFactory() { HostName = "localhost" };
+        _logger.LogInformation("Initializing RabbitMQ...");
+        _logger.LogInformation($"RabbitMQ Host: {_configuration["RabbitMQ:Host"]}");
+        _logger.LogInformation($"RabbitMQ Port: {_configuration["RabbitMQ:Port"]}");
+        _logger.LogInformation($" ------- ");
 
-        // Create a persistent connection
-        _connection = factory.CreateConnection();
-        _channel = _connection.CreateModel();
+        try
+        {
+            // Get RabbitMQ settings from configuration
+            var rabbitMQHost = _configuration["RabbitMQ:Host"];
+            var rabbitMQPort = int.Parse(_configuration["RabbitMQ:Port"]);
 
-        // Declare the queue that this worker will consume
-        _channel.QueueDeclare(queue: "orderProcessedCompletedQueue", durable: false, exclusive: false, autoDelete: false, arguments: null);
+            var factory = new ConnectionFactory() { HostName = rabbitMQHost, Port = rabbitMQPort };
+
+            // Create a persistent connection
+            _connection = factory.CreateConnection();
+            _channel = _connection.CreateModel();
+
+            // Declare the queue that this worker will consume
+            _channel.QueueDeclare(queue: "orderProcessedCompletedQueue", durable: false, exclusive: false, autoDelete: false, arguments: null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error initializing RabbitMQ: {ex.Message}");
+        }
     }
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
@@ -59,6 +77,7 @@ public class Worker : BackgroundService
         _logger.LogInformation("Processing payment...");
         Thread.Sleep(2000);  // Simulate time taken to process payment
         _logger.LogInformation("Payment processed successfully.");
+
         return true;  // Simulate a successful payment processing
     }
 

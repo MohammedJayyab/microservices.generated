@@ -1,0 +1,82 @@
+
+Docker Commands for the Project
+===============================
+
+1. Install rabbitmq image and run it
+-------------------------------------
+
+
+	docker run -d --hostname my-rabbit --name some-rabbit -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+	or
+	Command to Download the RabbitMQ Image:
+
+	docker pull rabbitmq:3-management
+------------------------------------------------------------
+
+---- running rabbitmq:
+ 	# The -p flag is used twice in your Docker command because you are mapping two different ports from the container to the host.
+	# Each -p flag is used to specify a separate port mapping.
+		docker run -d --name rabbitmq --network rabbitmq_network -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+	1- The first -p 5672:5672 maps port 5672 on the host to port 5672 on the container. This is the default port for RabbitMQ's AMQP (Advanced Message Queuing Protocol) service,
+	 which is used for messaging between applications.
+
+	2- The second -p 15672:15672 maps port 15672 on the host to port 15672 on the container.
+	 This port is used by RabbitMQ's management plugin, which provides a web-based UI for managing and monitoring RabbitMQ
+
+------------------------------------------------------------------------------------------------------------------------------------
+ 
+
+
+2. Creating and Managing Docker Networks
+----------------------------------------
+
+   docker network createrabbitmq_network
+
+3. Building Docker Images
+--------------------------
+
+   docker build -t orderservice .
+   docker build -t paymentservice .
+
+4. Running Containers
+----------------------
+
+   docker run -d --name rabbitmq --networkrabbitmq_network -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+   docker run -d --name orderservice --networkrabbitmq_network -p 5090:5090 orderservice
+   docker run -d --name paymentservice --networkrabbitmq_network -p 6090:6090 paymentservice
+
+5. Managing and Inspecting Containers
+--------------------------------------
+
+   docker ps
+   docker logs orderservice
+   docker stop orderservice
+   docker stop orderservice paymentservice
+   docker rm orderservice
+   docker rm orderservice paymentservice
+   docker rm -f orderservice paymentservice
+   docker cp orderservice:/app/file.txt /home/user/
+
+6. Networking Commands
+-----------------------
+
+   docker network inspectrabbitmq_network
+   docker network ls
+
+7. Interacting with Containers
+-------------------------------
+
+   docker exec -it orderservice /bin/bash
+   docker exec -it orderservice /bin/sh
+
+8. Docker Compose Commands (Optional)
+--------------------------------------
+
+   docker-compose up --build
+   docker-compose up rabbitmq
+   docker-compose up -d
+   docker-compose down
+
+
+
+
